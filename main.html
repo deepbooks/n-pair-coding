@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+    <title>SSH Client</title>
+    <script src="https://cdn.socket.io/4.1.2/socket.io.min.js" integrity="sha384-toS6mmwu70G0fw54EGlWWeA4z3dyJ+dlXBtSURSKN4vyRFOcxd3Bzjj/AoOwY+Rg" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    
+    <h1>SSH</h1>
+
+    <textarea readonly class="term"></textarea>
+
+<script>
+
+// Connect to the socket.io server
+const socket = io.connect('http://localhost:8080');
+
+// Wait for data from the server
+socket.on('output', data => {
+    // Append the data to our terminal
+    const terms = document.getElementsByClassName("term");
+    for(const term of terms) {
+        term.value += term.textContext || data;
+    }
+});
+
+// Listen for user input and pass it to the server
+document.addEventListener("keypress", e => {
+    socket.emit("input", String.fromCharCode(e.charCode));
+});
+
+</script>
+
+<style>
+body {
+    margin: 0;
+    padding: 0;
+}
+
+.terminal {
+    font-family: monospace;
+    color: white;
+    background: black;
+}
+</style>
+
+</body>
+</html>
