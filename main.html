@@ -2,26 +2,55 @@
 <html>
 <head>
     <title>SSH Client</title>
-    <script src="https://cdn.socket.io/4.1.2/socket.io.min.js" integrity="sha384-toS6mmwu70G0fw54EGlWWeA4z3dyJ+dlXBtSURSKN4vyRFOcxd3Bzjj/AoOwY+Rg" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js" integrity="sha512-iZIBSs+gDyTH0ZhUem9eQ1t4DcEn2B9lHxfRMeGQhyNdSUz+rb+5A3ummX6DQTOIs1XK0gOteOg/LPtSo9VJ+w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 
 <body>
-    
-    <h1>SSH</h1>
 
-    <textarea readonly class="term"></textarea>
+    <aside>
+        <ul></ul>
+    </aside>
 
 <script>
 
-// Connect to the socket.io server
-const socket = io.connect('http://localhost:8080');
+const socket = io.connect('http://localhost:8081');
 
-// Wait for data from the server
-socket.on('output', data => {
-    // Append the data to our terminal
-    const terms = document.getElementsByClassName("term");
+let mySids = [];
+
+socket.on('connected', text => {
+    const sids = JSON.parse(text);
+
+    // rm old
+    mySids.forEach(oid => {
+        const some = sids.some(sid => sid === oid);
+        if(!some) {
+            rmDom(oid);
+        }
+    });
+
+    // add new
+    sids.forEach(sid => {
+        const some = mySids.some(oid => oid === sid);
+        if(!some) {
+            addUserList(sid);
+            addTerm(sid);
+        }
+    });
+
+    mySids = sids;
+});
+
+socket.on('disconnected', sid => {
+    rmDom(sid);
+});
+
+socket.on('output', text => {
+    const terms = document.getElementsByTagName("textarea");
+    const json = JSON.parse(text);
     for(const term of terms) {
-        term.value += term.textContext || data;
+        if(term.name === json.sid) {
+            term.value += term.textContext || json.data;
+        }
     }
 });
 
@@ -30,18 +59,69 @@ document.addEventListener("keypress", e => {
     socket.emit("input", String.fromCharCode(e.charCode));
 });
 
+function addUserList(name) {
+    const uls = document.getElementsByTagName("ul");
+    
+    for(const ul of uls) {
+        let non = true;
+
+        const li = document.createElement('li');
+        li.innerText = li.name = name;
+        ul.appendChild(li);
+    }
+}
+
+function addTerm(name) {
+    const dom = getTermDom(name);
+    document.body.appendChild(dom);
+}
+
+function clean(sids) {
+    const doms = document.getElementsByName(sid);
+}
+
+function rmDom(name) {
+    const doms = document.getElementsByName(name);
+    if(doms && doms.length) {
+        for(const dom of doms) {
+            dom.remove();    
+        }
+    }
+}
+
+function getTermDom(name) {
+    return htmlToElement(
+        `<section name="${name}">
+            <h1>SSH - ${name}</h1>
+            <article>
+                <textarea name="${name}" readonly></textarea>
+            </article>
+        </section>`);
+}
+
+/**
+ * @param {String} HTML representing a single element
+ * @return {Element}
+ * 
+ * ex:
+ * const td = htmlToElement('<td>foo</td>');
+ * const div = htmlToElement('<div><span>nested</span> <span>stuff</span></div>');
+ * <ul> <li>1</li> <li>2</li> </ul>
+ */
+ function htmlToElement(html) {
+    var template = document.createElement('template');
+    html = html.trim(); // Never return a text node of whitespace as the result
+    template.innerHTML = html;
+    
+    return template.content.firstChild;
+}
+
 </script>
 
 <style>
 body {
     margin: 0;
     padding: 0;
-}
-
-.terminal {
-    font-family: monospace;
-    color: white;
-    background: black;
 }
 </style>
 
