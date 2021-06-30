@@ -49,6 +49,7 @@ io.on('connection', socket => {
     // Listen on the terminal for output and send it to the client
     term.on('data', data => {
         const json = JSON.stringify({ sid: socket.id, data });
+        console.log(data);
         // socket.broadcast.to(room).emit('output', json);
         io.emit('output', json);
     });
