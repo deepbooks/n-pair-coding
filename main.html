@@ -3,6 +3,8 @@
 <head>
     <title>SSH Client</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js" integrity="sha512-iZIBSs+gDyTH0ZhUem9eQ1t4DcEn2B9lHxfRMeGQhyNdSUz+rb+5A3ummX6DQTOIs1XK0gOteOg/LPtSo9VJ+w==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link rel="stylesheet" href="node_modules/xterm/css/xterm.css" />
+    <script type="module" src="node_modules/xterm/lib/xterm.js"></script>
 </head>
 
 <body>
@@ -12,11 +14,12 @@
     </aside>
 
 <script>
+// import { Terminal } from 'xterm';
 
 const socket = io.connect('http://localhost:8081');
 
 let mySids = [];
-
+let xterms = {};
 socket.on('connected', text => {
     const sids = JSON.parse(text);
 
@@ -33,7 +36,7 @@ socket.on('connected', text => {
         const some = mySids.some(oid => oid === sid);
         if(!some) {
             addUserList(sid);
-            addTerm(sid);
+            addXterm(sid);
         }
     });
 
@@ -45,6 +48,65 @@ socket.on('disconnected', sid => {
 });
 
 socket.on('output', text => {
+    // textTerm(text);
+    textXterm(text);
+});
+
+// Listen for user input and pass it to the server
+window.addEventListener("keypress", e => {
+    socket.emit("input", String.fromCharCode(e.charCode));
+});
+/* window.addEventListener("keydown", e => {
+    socket.emit("input", String.fromCharCode((e.keyCode)));
+});
+function key2charCode(e) {
+    return (typeof e.which == "number") ? e.which : e.keyCode;
+} */
+
+async function addUserList(name) {
+    const uls = document.getElementsByTagName("ul");
+    
+    for(const ul of uls) {
+        let non = true;
+
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        li.name = a.innerText = a.name = name;
+        a.href = '#'
+        li.appendChild(a);
+        ul.appendChild(li);
+        a.click();
+    }
+}
+
+function textXterm(text) {
+    const terms = document.getElementsByTagName("article");
+    const json = JSON.parse(text);
+    for(const t of terms) {
+        if(t.name === json.sid) {
+            const term = xterms[t.name];
+            term.write(json.data);
+        }
+    }
+}
+
+async function addXterm(name) {
+    await setTimeout(() => 0, 1000);
+    const term = new Terminal();
+    xterms[name] = term;
+    const article = document.createElement('article');
+    document.body.appendChild(article);
+    article.id = article.name = name;
+    term.open(article);
+    term.write(`Hello! ${socket.id}`);
+}
+
+async function addTerm(name) {
+    const dom = getTermDom(name);
+    document.body.appendChild(dom);
+}
+
+function textTerm(text) {
     const terms = document.getElementsByTagName("textarea");
     const json = JSON.parse(text);
     for(const term of terms) {
@@ -52,28 +114,6 @@ socket.on('output', text => {
             term.value += term.textContext || json.data;
         }
     }
-});
-
-// Listen for user input and pass it to the server
-document.addEventListener("keypress", e => {
-    socket.emit("input", String.fromCharCode(e.charCode));
-});
-
-function addUserList(name) {
-    const uls = document.getElementsByTagName("ul");
-    
-    for(const ul of uls) {
-        let non = true;
-
-        const li = document.createElement('li');
-        li.innerText = li.name = name;
-        ul.appendChild(li);
-    }
-}
-
-function addTerm(name) {
-    const dom = getTermDom(name);
-    document.body.appendChild(dom);
 }
 
 function clean(sids) {
@@ -94,7 +134,7 @@ function getTermDom(name) {
         `<section name="${name}">
             <h1>SSH - ${name}</h1>
             <article>
-                <textarea name="${name}" readonly></textarea>
+                <textarea id="${name}" name="${name}" readonly></textarea>
             </article>
         </section>`);
 }
@@ -122,6 +162,9 @@ function getTermDom(name) {
 body {
     margin: 0;
     padding: 0;
+}
+article {
+    pointer-events: none;
 }
 </style>
 
